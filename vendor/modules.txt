@@ -1,0 +1,25 @@
+# github.com/go-macaron/inject v0.0.0-20160627170012-d8a0b8677191
+github.com/go-macaron/inject
+# github.com/go-macaron/session v0.0.0-20190805070824-1a3cdc6f5659
+github.com/go-macaron/session
+# github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c
+github.com/gopherjs/gopherjs/js
+# github.com/jtolds/gls v4.20.0+incompatible
+github.com/jtolds/gls
+# github.com/smartystreets/assertions v1.0.1
+github.com/smartystreets/assertions
+github.com/smartystreets/assertions/internal/go-diff/diffmatchpatch
+github.com/smartystreets/assertions/internal/go-render/render
+github.com/smartystreets/assertions/internal/oglematchers
+# github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337
+github.com/smartystreets/goconvey/convey
+github.com/smartystreets/goconvey/convey/gotest
+github.com/smartystreets/goconvey/convey/reporting
+# github.com/unknwon/com v0.0.0-20190804042917-757f69c95f3e
+github.com/unknwon/com
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+golang.org/x/crypto/pbkdf2
+# gopkg.in/ini.v1 v1.46.0
+gopkg.in/ini.v1
+# gopkg.in/macaron.v1 v1.3.4
+gopkg.in/macaron.v1

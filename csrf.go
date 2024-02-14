@@ -137,10 +137,15 @@ type Options struct {
 	SetCookie bool
 	// Set the Secure flag to true on the cookie.
 	Secure bool
+	// Cookie SameSite default is Lax
+	SameSite http.SameSite
 	// Disallow Origin appear in request header.
 	Origin bool
 	// The function called when Validate fails.
 	ErrorFunc func(w http.ResponseWriter)
+
+	// Production or Development
+	ProdMode bool
 }
 
 // randomBytes generates n random []byte.
@@ -186,6 +191,11 @@ func prepareOptions(options []Options) Options {
 	}
 	if len(opt.SessionKey) == 0 {
 		opt.SessionKey = "uid"
+	}
+	if opt.Secure && opt.ProdMode {
+		opt.SameSite = http.SameSiteNoneMode
+	} else {
+		opt.SameSite = http.SameSiteLaxMode
 	}
 	opt.oldSeesionKey = "_old_" + opt.SessionKey
 	if opt.ErrorFunc == nil {
@@ -242,9 +252,20 @@ func Generate(options ...Options) macaron.Handler {
 		if needsNew {
 			// FIXME: actionId.
 			x.Token = GenerateToken(x.Secret, x.ID, "POST")
-			if opt.SetCookie {
-				ctx.SetCookie(opt.Cookie, x.Token, 0, opt.CookiePath, opt.CookieDomain, opt.Secure, opt.CookieHttpOnly, time.Now().AddDate(0, 0, 1))
-			}
+		}
+
+		if opt.SetCookie {
+			ctx.SetCookie(opt.Cookie, x.Token, func(cookie *http.Cookie) {
+				cookie.MaxAge = 0
+				cookie.Path = opt.CookiePath
+				cookie.Domain = opt.CookieDomain
+				cookie.HttpOnly = opt.CookieHttpOnly
+				cookie.Expires = time.Now().AddDate(0, 0, 1)
+				if opt.Secure && opt.ProdMode {
+					cookie.Secure = opt.Secure
+					cookie.SameSite = http.SameSiteNoneMode
+				}
+			})
 		}
 
 		if opt.SetHeader {
