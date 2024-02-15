@@ -129,8 +129,8 @@ type Options struct {
 	CookieHttpOnly bool
 	// Key used for getting the unique ID per user.
 	SessionKey string
-	// oldSeesionKey saves old value corresponding to SessionKey.
-	oldSeesionKey string
+	// oldSessionKey saves old value corresponding to SessionKey.
+	oldSessionKey string
 	// If true, send token via X-CSRFToken header.
 	SetHeader bool
 	// If true, send token via _csrf cookie.
@@ -197,7 +197,7 @@ func prepareOptions(options []Options) Options {
 	} else {
 		opt.SameSite = http.SameSiteLaxMode
 	}
-	opt.oldSeesionKey = "_old_" + opt.SessionKey
+	opt.oldSessionKey = "_old_" + opt.SessionKey
 	if opt.ErrorFunc == nil {
 		opt.ErrorFunc = func(w http.ResponseWriter) {
 			http.Error(w, "Invalid csrf token.", http.StatusBadRequest)
@@ -235,10 +235,10 @@ func Generate(options ...Options) macaron.Handler {
 		}
 
 		needsNew := false
-		oldUid := sess.Get(opt.oldSeesionKey)
+		oldUid := sess.Get(opt.oldSessionKey)
 		if oldUid == nil || oldUid.(string) != x.ID {
 			needsNew = true
-			_ = sess.Set(opt.oldSeesionKey, x.ID)
+			_ = sess.Set(opt.oldSessionKey, x.ID)
 		} else {
 			// If cookie present, map existing token, else generate a new one.
 			if val := ctx.GetCookie(opt.Cookie); len(val) > 0 {
@@ -252,20 +252,19 @@ func Generate(options ...Options) macaron.Handler {
 		if needsNew {
 			// FIXME: actionId.
 			x.Token = GenerateToken(x.Secret, x.ID, "POST")
-		}
-
-		if opt.SetCookie {
-			ctx.SetCookie(opt.Cookie, x.Token, func(cookie *http.Cookie) {
-				cookie.MaxAge = 0
-				cookie.Path = opt.CookiePath
-				cookie.Domain = opt.CookieDomain
-				cookie.HttpOnly = opt.CookieHttpOnly
-				cookie.Expires = time.Now().AddDate(0, 0, 1)
-				if opt.Secure && opt.ProdMode {
-					cookie.Secure = opt.Secure
-					cookie.SameSite = http.SameSiteNoneMode
-				}
-			})
+			if opt.SetCookie {
+				ctx.SetCookie(opt.Cookie, x.Token, func(cookie *http.Cookie) {
+					cookie.MaxAge = 0
+					cookie.Path = opt.CookiePath
+					cookie.Domain = opt.CookieDomain
+					cookie.HttpOnly = opt.CookieHttpOnly
+					cookie.Expires = time.Now().AddDate(0, 0, 1)
+					if opt.Secure && opt.ProdMode {
+						cookie.Secure = opt.Secure
+						cookie.SameSite = http.SameSiteNoneMode
+					}
+				})
+			}
 		}
 
 		if opt.SetHeader {
