@@ -129,18 +129,23 @@ type Options struct {
 	CookieHttpOnly bool
 	// Key used for getting the unique ID per user.
 	SessionKey string
-	// oldSeesionKey saves old value corresponding to SessionKey.
-	oldSeesionKey string
+	// oldSessionKey saves old value corresponding to SessionKey.
+	oldSessionKey string
 	// If true, send token via X-CSRFToken header.
 	SetHeader bool
 	// If true, send token via _csrf cookie.
 	SetCookie bool
 	// Set the Secure flag to true on the cookie.
 	Secure bool
+	// Cookie SameSite default is Lax
+	SameSite http.SameSite
 	// Disallow Origin appear in request header.
 	Origin bool
 	// The function called when Validate fails.
 	ErrorFunc func(w http.ResponseWriter)
+
+	// Production or Development
+	ProdMode bool
 }
 
 // randomBytes generates n random []byte.
@@ -187,7 +192,12 @@ func prepareOptions(options []Options) Options {
 	if len(opt.SessionKey) == 0 {
 		opt.SessionKey = "uid"
 	}
-	opt.oldSeesionKey = "_old_" + opt.SessionKey
+	if opt.Secure && opt.ProdMode {
+		opt.SameSite = http.SameSiteNoneMode
+	} else {
+		opt.SameSite = http.SameSiteLaxMode
+	}
+	opt.oldSessionKey = "_old_" + opt.SessionKey
 	if opt.ErrorFunc == nil {
 		opt.ErrorFunc = func(w http.ResponseWriter) {
 			http.Error(w, "Invalid csrf token.", http.StatusBadRequest)
@@ -225,10 +235,10 @@ func Generate(options ...Options) macaron.Handler {
 		}
 
 		needsNew := false
-		oldUid := sess.Get(opt.oldSeesionKey)
+		oldUid := sess.Get(opt.oldSessionKey)
 		if oldUid == nil || oldUid.(string) != x.ID {
 			needsNew = true
-			_ = sess.Set(opt.oldSeesionKey, x.ID)
+			_ = sess.Set(opt.oldSessionKey, x.ID)
 		} else {
 			// If cookie present, map existing token, else generate a new one.
 			if val := ctx.GetCookie(opt.Cookie); len(val) > 0 {
@@ -243,7 +253,17 @@ func Generate(options ...Options) macaron.Handler {
 			// FIXME: actionId.
 			x.Token = GenerateToken(x.Secret, x.ID, "POST")
 			if opt.SetCookie {
-				ctx.SetCookie(opt.Cookie, x.Token, 0, opt.CookiePath, opt.CookieDomain, opt.Secure, opt.CookieHttpOnly, time.Now().AddDate(0, 0, 1))
+				ctx.SetCookie(opt.Cookie, x.Token, func(cookie *http.Cookie) {
+					cookie.MaxAge = 0
+					cookie.Path = opt.CookiePath
+					cookie.Domain = opt.CookieDomain
+					cookie.HttpOnly = opt.CookieHttpOnly
+					cookie.Expires = time.Now().AddDate(0, 0, 1)
+					if opt.Secure && opt.ProdMode {
+						cookie.Secure = opt.Secure
+						cookie.SameSite = http.SameSiteNoneMode
+					}
+				})
 			}
 		}
 
